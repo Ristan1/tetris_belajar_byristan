@@ -244,21 +244,25 @@
       updateScore();
     }
 
-    function playerDrop(fast=false) {
-      if(fast) dropInterval = 1000;
-      player.pos.y++;
-      if(collide(arena, player)) {
-        player.pos.y--;
-        merge(arena, player);
-        playerReset();
-        arenaSweep();
-        if(level < 10 && lines >= level * 5) {
-          level++;
-          dropInterval *= 0.8;
-        }
-      }
-      dropCounter = 0;
+function playerDrop(fast=false) {
+  if(fast) dropInterval = 1000;
+  player.pos.y++;
+  if(collide(arena, player)) {
+    player.pos.y--;
+    merge(arena, player);
+    playerReset();
+    arenaSweep();
+    if(level < 10 && lines >= level * 5) {
+      level++;
+      dropInterval *= 0.8;
+    }
+
+    // Putar suara hanya jika pemain menekan tombol (fast = true)
+    if (fast) {
       sounds.drop.play();
+    }
+  }
+  dropCounter = 0;
     }
 
     function playerMove(dir) {
