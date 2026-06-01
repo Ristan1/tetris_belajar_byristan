@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Block Blasts</title>
+  <title>Block Blasts - Hardcore Shuffle</title>
   <style>
     :root {
       --bg: #0b0e14;
@@ -18,6 +18,7 @@
       --blue: #58a6ff;
       --green: #3fb950;
       --yellow: #d29922;
+      --purple: #8957e5;
     }
 
     body {
@@ -62,34 +63,29 @@
       height: var(--block-size);
       border-radius: 8px;
       cursor: pointer;
-      transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s;
+      transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s, filter 0.2s, background-color 0.4s;
       will-change: transform;
       z-index: 2;
     }
 
-    .red {
-      background: var(--red);
-      box-shadow: 0 4px 0 #991b1b;
-    }
-
-    .blue {
-      background: var(--blue);
-      box-shadow: 0 4px 0 #1e40af;
-    }
-
-    .green {
-      background: var(--green);
-      box-shadow: 0 4px 0 #166534;
-    }
-
-    .yellow {
-      background: var(--yellow);
-      box-shadow: 0 4px 0 #92400e;
-    }
+    .red { background: var(--red); box-shadow: 0 4px 0 #991b1b; }
+    .blue { background: var(--blue); box-shadow: 0 4px 0 #1e40af; }
+    .green { background: var(--green); box-shadow: 0 4px 0 #166534; }
+    .yellow { background: var(--yellow); box-shadow: 0 4px 0 #92400e; }
+    .purple { background: var(--purple); box-shadow: 0 4px 0 #5b32a8; }
 
     .block.vanishing {
       transform: scale(0) !important;
       opacity: 0;
+    }
+
+    .invalid-click {
+      animation: blink-error 0.3s;
+    }
+
+    @keyframes blink-error {
+      0%, 100% { filter: brightness(1) contrast(1); }
+      50% { filter: brightness(1.5) contrast(1.2); }
     }
 
     .particle {
@@ -128,19 +124,42 @@
       text-transform: uppercase;
     }
 
-    #score,
-    #high-score {
+    #score, #high-score {
       font-size: 1.8rem;
       font-weight: 800;
       color: white;
       margin-top: 5px;
     }
 
-    #high-score {
-      color: #f2cc60;
+    #high-score { color: #f2cc60; }
+
+    .timer-container {
+      width: 100%;
+      height: 12px;
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      overflow: hidden;
+      margin-bottom: 5px;
     }
 
-    /* Seed Input Styling */
+    #timer-bar {
+      width: 100%;
+      height: 100%;
+      background: var(--green);
+      transition: width 0.1s linear, background-color 0.3s;
+    }
+
+    #timer-bar.danger {
+      background: var(--red);
+      animation: pulse-danger 0.5s infinite;
+    }
+
+    @keyframes pulse-danger {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+
     .seed-container {
       display: flex;
       flex-direction: column;
@@ -158,9 +177,7 @@
       outline: none;
     }
 
-    #seed-input:focus {
-      border-color: var(--blue);
-    }
+    #seed-input:focus { border-color: var(--blue); }
 
     .control-btn {
       background: #238636;
@@ -173,13 +190,9 @@
       transition: background 0.2s;
     }
 
-    .control-btn:hover {
-      background: #2ea043;
-    }
+    .control-btn:hover { background: #2ea043; }
 
-    .shake {
-      animation: shake-key 0.2s;
-    }
+    .shake { animation: shake-key 0.2s; }
 
     @keyframes shake-key {
       0%, 100% { transform: translate(0, 0); }
@@ -201,19 +214,66 @@
       0% { transform: translateY(0) scale(1); opacity: 1; }
       100% { transform: translateY(-60px) scale(1.5); opacity: 0; }
     }
+
+    #game-over-screen {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(11, 14, 20, 0.9);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 50;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+      border-radius: 12px;
+      backdrop-filter: blur(4px);
+    }
+
+    #game-over-screen.active {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    #game-over-title {
+      font-size: 2.2rem;
+      color: var(--red);
+      margin-bottom: 5px;
+      font-weight: 900;
+      text-shadow: 0 4px 10px rgba(0,0,0,0.5);
+      text-align: center;
+    }
   </style>
 </head>
 
 <body>
 
   <div class="main-layout">
-    <div id="game-container"></div>
+    <div id="game-container">
+      <div id="game-over-screen">
+        <div id="game-over-title">TIME'S UP!</div>
+        <div style="margin-bottom: 20px; font-size: 1.2rem; font-weight: bold;">
+          Final Score: <span id="final-score">0</span>
+        </div>
+        <button class="control-btn" onclick="Game.init()">PLAY AGAIN</button>
+      </div>
+    </div>
 
     <div class="sidebar">
+      <!-- TIMER DIPINDAHKAN KE ATAS -->
+      <div>
+        <span class="label">Time Left</span>
+        <div class="timer-container">
+          <div id="timer-bar"></div>
+        </div>
+      </div>
+
       <div class="stat-box">
         <span class="label">Best</span>
         <div id="high-score">0</div>
       </div>
+      
       <div class="stat-box">
         <span class="label">Score</span>
         <div id="score">0</div>
@@ -231,29 +291,20 @@
   <script>
     const audioCtx = new(window.AudioContext || window.webkitAudioContext)();
     
-    // ==========================================
-    // FUNGSI PENGIRIM SKOR (LINK SUDAH TERPASANG)
-    // ==========================================
     function kirimSkorKePortal(skorAkhir, versiGame) {
       const urlParams = new URLSearchParams(window.location.search);
       const playerName = urlParams.get('nama');
-
-      if (!playerName) return; // Jika tidak ada nama, batalkan pengiriman
+      if (!playerName) return;
 
       const waktuSekarang = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WITA';
-      
-      // LINK APPS SCRIPT KAMU
       const webAppUrl = "https://script.google.com/macros/s/AKfycbxtkjcRs3OBofInEivkgfjV7oFlAQv6iIjWioW5xrVNWFZXMBo7I1t03KWKmNvFScC7Mg/exec"; 
-
       const urlKirim = `${webAppUrl}?action=simpanSkor&nama=${encodeURIComponent(playerName)}&game=${versiGame}&skor=${skorAkhir}&waktu=${encodeURIComponent(waktuSekarang)}`;
 
-      // Mode no-cors agar tidak di-block oleh browser
       fetch(urlKirim, { method: 'GET', mode: 'no-cors' })
         .then(() => console.log("Berhasil update skor ke server!"))
         .catch(err => console.error("Gagal kirim skor", err));
     }
 
-    // Deterministic Random Engine
     const SeedEngine = {
       state: null,
       cyrb128(str) {
@@ -293,8 +344,8 @@
     const Config = {
       ROWS: 6,
       COLS: 6,
-      COLORS: ['red', 'blue', 'green', 'yellow'],
-      HEX: { red: '#f85149', blue: '#58a6ff', green: '#3fb950', yellow: '#d29922' },
+      COLORS: ['red', 'blue', 'green', 'yellow', 'purple'],
+      HEX: { red: '#f85149', blue: '#58a6ff', green: '#3fb950', yellow: '#d29922', purple: '#8957e5' },
       BLOCK_SIZE: 50,
       GAP: 8
     };
@@ -305,20 +356,66 @@
       isAnimating: false,
       container: document.getElementById('game-container'),
       seedInput: document.getElementById('seed-input'),
+      timerBar: document.getElementById('timer-bar'),
+      
+      timerInterval: null,
+      timeLeft: 100,
+      maxTime: 100,
+      isGameOver: false,
+
       init() {
         SeedEngine.setSeed(this.seedInput.value);
         this.score = 0;
+        this.isGameOver = false;
         this.updateScoreDisplay();
+        
+        const gameOverScreen = document.getElementById('game-over-screen');
+        gameOverScreen.classList.remove('active');
         this.container.innerHTML = '';
+        this.container.appendChild(gameOverScreen);
+
         this.isAnimating = false;
         this.grid = Array(Config.ROWS).fill().map(() => Array(Config.COLS).fill(null));
         this.domGrid = Array(Config.ROWS).fill().map(() => Array(Config.COLS).fill(null));
+        
         for (let r = 0; r < Config.ROWS; r++) {
           for (let c = 0; c < Config.COLS; c++) {
             this.createBlock(r, c, true);
           }
         }
+
+        if (this.checkGameOverBoard()) {
+            this.shuffleBoard(true); 
+        }
+
+        this.timeLeft = this.maxTime;
+        if (this.timerInterval) clearInterval(this.timerInterval);
+        this.timerInterval = setInterval(() => this.tickTimer(), 100);
       },
+
+      tickTimer() {
+        if (this.isGameOver) return;
+        
+        let drainRate = 0.5 + (this.score / 2000); 
+        this.timeLeft -= drainRate; 
+        
+        if (this.timeLeft <= 0) {
+          this.timeLeft = 0;
+          this.triggerGameOver();
+        }
+        this.renderTimer();
+      },
+
+      renderTimer() {
+        const percent = (this.timeLeft / this.maxTime) * 100;
+        this.timerBar.style.width = percent + '%';
+        if (percent < 25) {
+          this.timerBar.classList.add('danger');
+        } else {
+          this.timerBar.classList.remove('danger');
+        }
+      },
+
       playSynth(type) {
         if (audioCtx.state === 'suspended') audioCtx.resume();
         const osc = audioCtx.createOscillator();
@@ -340,8 +437,23 @@
           gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
           osc.start(now);
           osc.stop(now + 0.2);
+        } else if (type === 'error') {
+          osc.frequency.setValueAtTime(100, now);
+          osc.frequency.exponentialRampToValueAtTime(80, now + 0.1);
+          gain.gain.setValueAtTime(0.3, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+          osc.start(now);
+          osc.stop(now + 0.1);
+        } else if (type === 'shuffle') {
+          osc.frequency.setValueAtTime(300, now);
+          osc.frequency.linearRampToValueAtTime(600, now + 0.2);
+          gain.gain.setValueAtTime(0.2, now);
+          gain.gain.linearRampToValueAtTime(0.01, now + 0.3);
+          osc.start(now);
+          osc.stop(now + 0.3);
         }
       },
+
       createBlock(r, c, isInit = false) {
         const color = Config.COLORS[Math.floor(SeedEngine.random() * Config.COLORS.length)];
         const el = document.createElement('div');
@@ -360,17 +472,23 @@
           });
         }
       },
+
       async handleClick(e, r, c) {
-        if (this.isAnimating) return;
+        if (this.isAnimating || this.isGameOver) return;
         const color = this.grid[r][c];
         const matches = this.findMatches(r, c, color);
-        if (matches.size >= 2) {
+        
+        if (matches.size >= 3) {
           this.isAnimating = true;
           this.playSynth('pop');
+          
           const points = matches.size * 10;
           this.score += points;
           this.updateScoreDisplay();
           this.showFloatingText(e.clientX, e.clientY, `+${points}`);
+          
+          this.timeLeft = Math.min(this.maxTime, this.timeLeft + (matches.size * 3));
+          
           matches.forEach(key => {
             const [mr, mc] = key.split(',').map(Number);
             this.spawnParticles(mc, mr, color);
@@ -380,8 +498,19 @@
           this.container.classList.add('shake');
           setTimeout(() => this.container.classList.remove('shake'), 200);
           setTimeout(() => this.cleanupAndDrop(), 250);
+        } else {
+          this.playSynth('error');
+          this.timeLeft -= 2; 
+
+          matches.forEach(key => {
+            const [mr, mc] = key.split(',').map(Number);
+            const block = this.domGrid[mr][mc];
+            block.classList.add('invalid-click');
+            setTimeout(() => block.classList.remove('invalid-click'), 300);
+          });
         }
       },
+
       findMatches(r, c, color, set = new Set()) {
         const key = `${r},${c}`;
         if (r < 0 || r >= Config.ROWS || c < 0 || c >= Config.COLS || this.grid[r][c] !== color || set.has(key)) return set;
@@ -392,6 +521,7 @@
         this.findMatches(r, c - 1, color, set);
         return set;
       },
+
       cleanupAndDrop() {
         document.querySelectorAll('.vanishing').forEach(el => el.remove());
         for (let c = 0; c < Config.COLS; c++) {
@@ -419,19 +549,95 @@
         setTimeout(() => {
           this.playSynth('drop');
           this.isAnimating = false;
+          
+          if (this.checkGameOverBoard()) {
+            this.shuffleBoard();
+          }
         }, 300);
       },
+
+      checkGameOverBoard() {
+        for (let r = 0; r < Config.ROWS; r++) {
+          for (let c = 0; c < Config.COLS; c++) {
+            if (this.grid[r][c] !== null) {
+              const matches = this.findMatches(r, c, this.grid[r][c], new Set());
+              if (matches.size >= 3) return false; 
+            }
+          }
+        }
+        return true; 
+      },
+
+      shuffleBoard(isSilent = false) {
+        if (!isSilent) {
+          this.playSynth('shuffle');
+          const overlay = document.createElement('div');
+          overlay.innerText = "AUTO SHUFFLE!";
+          overlay.style.position = 'absolute';
+          overlay.style.top = '50%';
+          overlay.style.left = '50%';
+          overlay.style.transform = 'translate(-50%, -50%)';
+          overlay.style.color = '#fff';
+          overlay.style.fontWeight = '900';
+          overlay.style.fontSize = '1.5rem';
+          overlay.style.textShadow = '0 0 15px rgba(248, 81, 73, 1)';
+          overlay.style.zIndex = '100';
+          overlay.style.pointerEvents = 'none';
+          overlay.style.textAlign = 'center';
+          overlay.style.animation = 'float-up 1.5s ease-out forwards';
+          this.container.appendChild(overlay);
+          setTimeout(() => overlay.remove(), 1500);
+        }
+
+        let isDeadlock = true;
+        let watchdog = 0;
+        
+        while(isDeadlock && watchdog < 100) {
+            for (let r = 0; r < Config.ROWS; r++) {
+                for (let c = 0; c < Config.COLS; c++) {
+                    if (this.grid[r][c] !== null) {
+                        this.grid[r][c] = Config.COLORS[Math.floor(SeedEngine.random() * Config.COLORS.length)];
+                    }
+                }
+            }
+            isDeadlock = this.checkGameOverBoard();
+            watchdog++;
+        }
+
+        for (let r = 0; r < Config.ROWS; r++) {
+            for (let c = 0; c < Config.COLS; c++) {
+                if (this.domGrid[r][c] !== null) {
+                    const block = this.domGrid[r][c];
+                    block.className = `block ${this.grid[r][c]}`;
+                }
+            }
+        }
+      },
+
+      triggerGameOver() {
+        if (this.isGameOver) return;
+        this.isGameOver = true;
+        clearInterval(this.timerInterval);
+
+        const gameOverScreen = document.getElementById('game-over-screen');
+        const finalScoreText = document.getElementById('final-score');
+        
+        finalScoreText.innerText = this.score;
+        gameOverScreen.classList.add('active');
+        
+        kirimSkorKePortal(this.score, "V5_SHUFFLE");
+      },
+
       updateScoreDisplay() {
         document.getElementById('score').innerText = this.score;
-        // PENGIRIMAN SKOR V1 DILAKUKAN SAAT REKOR PECAH KARENA V1 TIDAK ADA GAME OVER
         if (this.score > this.highScore) {
           this.highScore = this.score;
           localStorage.setItem('blockBlastBest', this.highScore);
-          
-          kirimSkorKePortal(this.highScore, "V1"); // <- Fungsi dikirim ke portal
+          kirimSkorKePortal(this.highScore, "V5_SHUFFLE"); 
         }
         document.getElementById('high-score').innerText = this.highScore;
       },
+
       spawnParticles(c, r, colorName) {
         const x = c * (Config.BLOCK_SIZE + Config.GAP) + (Config.BLOCK_SIZE / 2) + Config.GAP;
         const y = r * (Config.BLOCK_SIZE + Config.GAP) + (Config.BLOCK_SIZE / 2) + Config.GAP;
@@ -450,6 +656,7 @@
           setTimeout(() => p.remove(), 600);
         }
       },
+
       showFloatingText(x, y, txt) {
         const el = document.createElement('div');
         el.className = 'floating-score';
@@ -460,13 +667,9 @@
         setTimeout(() => el.remove(), 800);
       }
     };
-    Game.seedInput.addEventListener('input', () => {
-      Game.init();
-    });
-    // Start initial game
+
+    Game.seedInput.addEventListener('input', () => Game.init());
     Game.init();
   </script>
-
 </body>
-
 </html>
