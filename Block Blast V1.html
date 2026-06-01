@@ -261,7 +261,6 @@
     </div>
 
     <div class="sidebar">
-      <!-- TIMER DIPINDAHKAN KE ATAS -->
       <div>
         <span class="label">Time Left</span>
         <div class="timer-container">
@@ -625,7 +624,8 @@
         finalScoreText.innerText = this.score;
         gameOverScreen.classList.add('active');
         
-        kirimSkorKePortal(this.score, "V5_SHUFFLE");
+        // DIUBAH KE V1 SESUAI REQUEST
+        kirimSkorKePortal(this.score, "V1");
       },
 
       updateScoreDisplay() {
@@ -633,7 +633,8 @@
         if (this.score > this.highScore) {
           this.highScore = this.score;
           localStorage.setItem('blockBlastBest', this.highScore);
-          kirimSkorKePortal(this.highScore, "V5_SHUFFLE"); 
+          // DIUBAH KE V1 SESUAI REQUEST
+          kirimSkorKePortal(this.highScore, "V1"); 
         }
         document.getElementById('high-score').innerText = this.highScore;
       },
