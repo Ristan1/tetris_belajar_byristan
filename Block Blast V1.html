@@ -182,19 +182,9 @@
     }
 
     @keyframes shake-key {
-
-      0%,
-      100% {
-        transform: translate(0, 0);
-      }
-
-      25% {
-        transform: translate(-4px, 0);
-      }
-
-      75% {
-        transform: translate(4px, 0);
-      }
+      0%, 100% { transform: translate(0, 0); }
+      25% { transform: translate(-4px, 0); }
+      75% { transform: translate(4px, 0); }
     }
 
     .floating-score {
@@ -208,15 +198,8 @@
     }
 
     @keyframes float-up {
-      0% {
-        transform: translateY(0) scale(1);
-        opacity: 1;
-      }
-
-      100% {
-        transform: translateY(-60px) scale(1.5);
-        opacity: 0;
-      }
+      0% { transform: translateY(0) scale(1); opacity: 1; }
+      100% { transform: translateY(-60px) scale(1.5); opacity: 0; }
     }
   </style>
 </head>
@@ -249,21 +232,22 @@
     const audioCtx = new(window.AudioContext || window.webkitAudioContext)();
     
     // ==========================================
-    // FUNGSI PENGIRIM SKOR KE PORTAL
+    // FUNGSI PENGIRIM SKOR (LINK SUDAH TERPASANG)
     // ==========================================
     function kirimSkorKePortal(skorAkhir, versiGame) {
       const urlParams = new URLSearchParams(window.location.search);
       const playerName = urlParams.get('nama');
 
-      if (!playerName) return;
+      if (!playerName) return; // Jika tidak ada nama, batalkan pengiriman
 
       const waktuSekarang = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WITA';
       
-      // GANTI LINK DI BAWAH INI DENGAN URL WEB APP PORTAL KAMU
+      // LINK APPS SCRIPT KAMU
       const webAppUrl = "https://script.google.com/macros/s/AKfycbxtkjcRs3OBofInEivkgfjV7oFlAQv6iIjWioW5xrVNWFZXMBo7I1t03KWKmNvFScC7Mg/exec"; 
 
       const urlKirim = `${webAppUrl}?action=simpanSkor&nama=${encodeURIComponent(playerName)}&game=${versiGame}&skor=${skorAkhir}&waktu=${encodeURIComponent(waktuSekarang)}`;
 
+      // Mode no-cors agar tidak di-block oleh browser
       fetch(urlKirim, { method: 'GET', mode: 'no-cors' })
         .then(() => console.log("Berhasil update skor ke server!"))
         .catch(err => console.error("Gagal kirim skor", err));
@@ -273,10 +257,7 @@
     const SeedEngine = {
       state: null,
       cyrb128(str) {
-        let h1 = 1779033703,
-          h2 = 3144134277,
-          h3 = 1013904242,
-          h4 = 2773480762;
+        let h1 = 1779033703, h2 = 3144134277, h3 = 1013904242, h4 = 2773480762;
         for (let i = 0, k; i < str.length; i++) {
           k = str.charCodeAt(i);
           h1 = h2 ^ Math.imul(h1 ^ k, 597399067);
@@ -292,10 +273,7 @@
       },
       sfc32(a, b, c, d) {
         return function() {
-          a >>>= 0;
-          b >>>= 0;
-          c >>>= 0;
-          d >>>= 0;
+          a >>>= 0; b >>>= 0; c >>>= 0; d >>>= 0;
           var t = (a + b | 0) + d | 0;
           d = d + 1 | 0;
           a = b ^ b >>> 9;
@@ -309,27 +287,20 @@
         const seedParts = this.cyrb128(val || Math.random().toString());
         this.state = this.sfc32(...seedParts);
       },
-      random() {
-        return this.state ? this.state() : Math.random();
-      }
+      random() { return this.state ? this.state() : Math.random(); }
     };
+
     const Config = {
       ROWS: 6,
       COLS: 6,
       COLORS: ['red', 'blue', 'green', 'yellow'],
-      HEX: {
-        red: '#f85149',
-        blue: '#58a6ff',
-        green: '#3fb950',
-        yellow: '#d29922'
-      },
+      HEX: { red: '#f85149', blue: '#58a6ff', green: '#3fb950', yellow: '#d29922' },
       BLOCK_SIZE: 50,
       GAP: 8
     };
+
     const Game = {
-      grid: [],
-      domGrid: [],
-      score: 0,
+      grid: [], domGrid: [], score: 0,
       highScore: localStorage.getItem('blockBlastBest') || 0,
       isAnimating: false,
       container: document.getElementById('game-container'),
@@ -452,12 +423,12 @@
       },
       updateScoreDisplay() {
         document.getElementById('score').innerText = this.score;
+        // PENGIRIMAN SKOR V1 DILAKUKAN SAAT REKOR PECAH KARENA V1 TIDAK ADA GAME OVER
         if (this.score > this.highScore) {
           this.highScore = this.score;
           localStorage.setItem('blockBlastBest', this.highScore);
           
-          // KIRIM SKOR KE PORTAL SETIAP KALI REKOR PECAH
-          kirimSkorKePortal(this.highScore, "V1");
+          kirimSkorKePortal(this.highScore, "V1"); // <- Fungsi dikirim ke portal
         }
         document.getElementById('high-score').innerText = this.highScore;
       },
