@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Modern Block Blast</title>
+  <style>
+    :root {
+      --bg: #0b0e14;
+      --panel: #1c2128;
+      --text: #adbac7;
+      --red: #f85149;
+      --blue: #58a6ff;
+      --green: #3fb950;
+      --yellow: #d29922;
+      --grid-bg: #161b22;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 20px 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      box-sizing: border-box;
+      touch-action: none;
+    }
+
+    .header-layout {
+      display: flex;
+      gap: 15px;
+      margin-bottom: 20px;
+      width: 100%;
+      max-width: 400px;
+    }
+
+    .stat-box {
+      background: var(--panel);
+      padding: 10px 15px;
+      border-radius: 12px;
+      text-align: center;
+      border: 1px solid #30363d;
+      flex: 1;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    }
+
+    .label {
+      font-size: 0.7rem;
+      font-weight: bold;
+      color: #768390;
+      text-transform: uppercase;
+    }
+
+    .score-val {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: white;
+      margin-top: 2px;
+    }
+
+    #high-score { color: #f2cc60; }
+
+    #game-wrapper {
+      position: relative;
+      background: var(--grid-bg);
+      padding: 10px;
+      border-radius: 16px;
+      border: 1px solid #30363d;
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6);
+    }
+
+    #gameCanvas {
+      background-color: var(--bg);
+      border-radius: 8px;
+      box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.8);
+      display: block;
+    }
+
+    #pieceSelection {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      margin-top: 25px;
+      z-index: 1;
+      width: 100%;
+    }
+
+    .pieceCanvas {
+      cursor: grab;
+      background: var(--panel);
+      border-radius: 12px;
+      border: 1px solid #30363d;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+      transition: transform 0.2s, background 0.2s;
+    }
+    
+    .pieceCanvas:active {
+      cursor: grabbing;
+    }
+
+    #particle-container {
+      position: absolute;
+      top: 10px; left: 10px; right: 10px; bottom: 10px;
+      pointer-events: none;
+      overflow: hidden;
+      border-radius: 8px;
+      z-index: 10;
+    }
+
+    .particle {
+      position: absolute;
+      pointer-events: none;
+      border-radius: 3px;
+      animation: burst 0.5s cubic-bezier(0.1, 0.9, 0.2, 1) forwards;
+    }
+
+    @keyframes burst {
+      0% { transform: translate(0, 0) scale(1); opacity: 1; }
+      100% { transform: translate(var(--dx), var(--dy)) scale(0); opacity: 0; }
+    }
+
+    .floating-score {
+      position: absolute;
+      pointer-events: none;
+      font-size: 1.5rem;
+      font-weight: 900;
+      color: #fff;
+      text-shadow: 0 0 10px rgba(0, 0, 0, 0.8);
+      animation: float-up 0.8s ease-out forwards;
+      z-index: 100;
+    }
+
+    @keyframes float-up {
+      0% { transform: translateY(0) scale(1); opacity: 1; }
+      100% { transform: translateY(-60px) scale(1.5); opacity: 0; }
+    }
+
+    .shake { animation: shake-key 0.3s; }
+    .heavy-shake { animation: heavy-shake-key 0.5s; }
+
+    @keyframes shake-key {
+      0%, 100% { transform: translate(0, 0); }
+      20% { transform: translate(-4px, 2px); }
+      40% { transform: translate(4px, -2px); }
+      60% { transform: translate(-4px, -2px); }
+      80% { transform: translate(4px, 2px); }
+    }
+
+    @keyframes heavy-shake-key {
+      0%, 100% { transform: translate(0, 0); }
+      10%, 30%, 50%, 70%, 90% { transform: translate(-10px, 8px) scale(1.02); }
+      20%, 40%, 60%, 80% { transform: translate(10px, -8px) scale(1.02); }
+    }
+
+    /* CUSTOM GAME OVER MODAL */
+    #gameOverOverlay {
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.9);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+
+    #gameOverOverlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-content {
+      background: #111;
+      border: 3px solid var(--red);
+      padding: 40px 20px;
+      border-radius: 20px;
+      text-align: center;
+      max-width: 320px;
+      width: 90%;
+      box-shadow: 0 0 50px rgba(248, 81, 73, 0.4);
+      transform: scale(0.8);
+      transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    #gameOverOverlay.active .modal-content {
+      transform: scale(1);
+    }
+
+    .modal-title {
+      font-size: 3rem;
+      font-weight: 900;
+      color: var(--red);
+      margin: 0 0 10px 0;
+      text-transform: uppercase;
+      text-shadow: 2px 2px 0px #4a0000;
+    }
+
+    .modal-score {
+      font-size: 1.5rem;
+      color: #fff;
+      margin-bottom: 20px;
+    }
+
+    .modal-insult {
+      font-size: 1.2rem;
+      color: #ffcc00;
+      font-style: italic;
+      margin-bottom: 30px;
+      min-height: 60px;
+    }
+
+    .btn-restart {
+      background: var(--red);
+      color: #fff;
+      border: none;
+      padding: 15px 30px;
+      font-size: 1.2rem;
+      font-weight: bold;
+      border-radius: 10px;
+      text-transform: uppercase;
+      cursor: pointer;
+      box-shadow: 0 5px 0 #991b1b;
+      transition: all 0.1s;
+    }
+
+    .btn-restart:active {
+      transform: translateY(5px);
+      box-shadow: 0 0 0 #991b1b;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header-layout">
+    <div class="stat-box">
+      <div class="label">Best Score</div>
+      <div id="high-score" class="score-val">0</div>
+    </div>
+    <div class="stat-box">
+      <div class="label">Score</div>
+      <div id="score" class="score-val">0</div>
+    </div>
+    <div class="stat-box">
+      <div class="label">Combo</div>
+      <div id="comboDisplay" class="score-val">0</div>
+    </div>
+  </div>
+
+  <div id="game-wrapper">
+    <canvas id="gameCanvas" width="320" height="320"></canvas>
+    <div id="particle-container"></div>
+  </div>
+
+  <div id="pieceSelection">
+    <canvas class="pieceCanvas" width="90" height="90"></canvas>
+    <canvas class="pieceCanvas" width="90" height="90"></canvas>
+    <canvas class="pieceCanvas" width="90" height="90"></canvas>
+  </div>
+
+  <div id="gameOverOverlay">
+    <div class="modal-content">
+      <h1 class="modal-title">Wasted</h1>
+      <div class="modal-score">Final Score: <strong id="modalScoreVal">0</strong></div>
+      <div class="modal-insult" id="modalInsultText">Cupu banget mainnya!</div>
+      <button class="btn-restart" id="btnRestart">Main Lagi</button>
+    </div>
+  </div>
+
+  <script>
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    
+    function playSound(type) {
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      const now = audioCtx.currentTime;
+      
+      if (type === 'pop') { 
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(400, now);
+        osc.frequency.exponentialRampToValueAtTime(800, now + 0.1);
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+        osc.start(now); osc.stop(now + 0.2);
+      } else if (type === 'drop') { 
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(200, now);
+        osc.frequency.exponentialRampToValueAtTime(50, now + 0.15);
+        gain.gain.setValueAtTime(0.4, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+        osc.start(now); osc.stop(now + 0.15);
+      } else if (type === 'pickup') { 
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(300, now);
+        osc.frequency.linearRampToValueAtTime(500, now + 0.05);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.1);
+        osc.start(now); osc.stop(now + 0.1);
+      } else if (type === 'error') { 
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(150, now);
+        osc.frequency.linearRampToValueAtTime(100, now + 0.1);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.15);
+        osc.start(now); osc.stop(now + 0.15);
+      } else if (type === 'scream') {
+        // Efek sintesis suara teriak kencang / jumpscare
+        const osc2 = audioCtx.createOscillator();
+        const osc3 = audioCtx.createOscillator();
+        
+        osc.type = 'sawtooth';
+        osc2.type = 'square';
+        osc3.type = 'sawtooth';
+
+        // Pitch drop drastis dari tinggi ke rendah untuk efek teriak
+        osc.frequency.setValueAtTime(2000, now);
+        osc.frequency.exponentialRampToValueAtTime(100, now + 1.2);
+        
+        osc2.frequency.setValueAtTime(1950, now); // Disonansi (fals)
+        osc2.frequency.exponentialRampToValueAtTime(80, now + 1.2);
+
+        osc3.frequency.setValueAtTime(2100, now);
+        osc3.frequency.exponentialRampToValueAtTime(120, now + 1.2);
+
+        gain.gain.setValueAtTime(0.8, now); // Volume tinggi
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 1.5);
+
+        osc2.connect(gain);
+        osc3.connect(gain);
+
+        osc.start(now); osc.stop(now + 1.5);
+        osc2.start(now); osc2.stop(now + 1.5);
+        osc3.start(now); osc3.stop(now + 1.5);
+      }
+    }
+
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const particleContainer = document.getElementById('particle-container');
+    const wrapper = document.getElementById('game-wrapper');
+    const pieceSelection = document.querySelectorAll('.pieceCanvas');
+    const gameOverOverlay = document.getElementById('gameOverOverlay');
+    const btnRestart = document.getElementById('btnRestart');
+    
+    const gridSize = 8;
+    const blockSize = canvas.width / gridSize;
+    const blockPadding = 3; 
+    
+    const colors = ['#f85149', '#58a6ff', '#3fb950', '#d29922'];
+    
+    let grid, score = 0, combo = 0, movesWithoutClear = 0;
+    let highScore = localStorage.getItem('modernBlockBlastBest') || 0;
+    
+    let selectedPiece = null, piecePos = null, currentPieceIndex = -1, isDragging = false;
+    let pieceColors = Array(pieceSelection.length).fill(null);
+
+    document.getElementById('high-score').innerText = highScore;
+
+    const basePieces = [
+      [[1, 1, 1, 1]], 
+      [[1, 1], [1, 1]], 
+      [[1, 1, 0], [0, 1, 1]], 
+      [[1, 1, 1, 1, 1]], 
+      [[1, 1, 1]], 
+      [[1, 1, 1], [1, 1, 1]], 
+      [[1, 1, 1], [0, 0, 1], [0, 0, 1]], 
+      [[1, 1], [0, 1]], 
+      [[0, 1], [1, 0]], 
+      [[1]], 
+      [[1, 1]] 
+    ];
+
+    const insults = [
+      "Cupu banget! Gitu doang bisanya?",
+      "Balik main Roblox aja sana kalo otak udah nge-lag!",
+      "Malu-maluin, masa skor segini doang bangganya minta ampun.",
+      "IQ tiarap ya? Papan segede gitu masih dibilang sempit.",
+      "Mending turu aja deh, daripada memaksakan kehendak.",
+      "Skor segini? Bocil TK mencet ngasal juga dapet lebih!",
+      "Nggak ada bakat main puzzle lu. Suram!"
+    ];
+
+    function resetGrid() {
+      grid = Array.from({ length: gridSize }, () => Array(gridSize).fill(null));
+    }
+
+    function drawRoundedRect(ctx, x, y, width, height, radius, fill, isEmpty = false) {
+      ctx.beginPath();
+      ctx.moveTo(x + radius, y);
+      ctx.lineTo(x + width - radius, y);
+      ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+      ctx.lineTo(x + width, y + height - radius);
+      ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+      ctx.lineTo(x + radius, y + height);
+      ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+      ctx.lineTo(x, y + radius);
+      ctx.quadraticCurveTo(x, y, x + radius, y);
+      ctx.closePath();
+      
+      ctx.fillStyle = fill;
+      ctx.fill();
+
+      if (!isEmpty) {
+        ctx.fillStyle = 'rgba(255,255,255,0.15)';
+        ctx.fillRect(x, y, width, height / 3);
+        ctx.fillStyle = 'rgba(0,0,0,0.2)';
+        ctx.fillRect(x, y + (height/2), width, height / 2);
+      } else {
+        ctx.strokeStyle = '#30363d';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+    }
+
+    function drawGrid() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (let row = 0; row < gridSize; row++) {
+        for (let col = 0; col < gridSize; col++) {
+          const x = col * blockSize + blockPadding;
+          const y = row * blockSize + blockPadding;
+          const size = blockSize - (blockPadding * 2);
+          
+          if (grid[row][col]) {
+            drawRoundedRect(ctx, x, y, size, size, 6, grid[row][col]);
+          } else {
+            drawRoundedRect(ctx, x, y, size, size, 6, '#1c2128', true);
+          }
+        }
+      }
+    }
+
+    function drawDraggingPiece(piece, cx, cy, color, isCheck = false) {
+      const scale = isCheck ? 1 : 1.15; 
+      const drawSize = (blockSize - (blockPadding * 2)) * scale;
+
+      ctx.globalAlpha = isCheck ? 0.6 : 0.9;
+      piece.forEach((row, rowIndex) => {
+        row.forEach((cell, colIndex) => {
+          if (cell) {
+            let pX, pY;
+            if (isCheck) {
+              pX = (cx + colIndex) * blockSize + blockPadding;
+              pY = (cy + rowIndex) * blockSize + blockPadding;
+            } else {
+              pX = cx - (piece[0].length * blockSize * scale)/2 + (colIndex * blockSize * scale);
+              pY = cy - (piece.length * blockSize * scale)/2 - 40 + (rowIndex * blockSize * scale);
+            }
+            drawRoundedRect(ctx, pX, pY, drawSize, drawSize, 6, color);
+          }
+        });
+      });
+      ctx.globalAlpha = 1.0;
+    }
+
+    function rotatePiece(piece, rotations) {
+      let rotatedPiece = piece;
+      for (let i = 0; i < rotations; i++) {
+        rotatedPiece = rotatedPiece[0].map((_, colIndex) =>
+          rotatedPiece.map((row) => row[colIndex]).reverse()
+        );
+      }
+      return rotatedPiece;
+    }
+
+    function getSmartValidPieces() {
+      let allShapes = [];
+      basePieces.forEach(p => {
+        for(let r=0; r<4; r++) {
+          allShapes.push(rotatePiece(p, r));
+        }
+      });
+
+      let validShapes = [];
+      allShapes.forEach(shape => {
+        let canFit = false;
+        for (let y = 0; y < gridSize; y++) {
+          for (let x = 0; x < gridSize; x++) {
+            if (placePiece(shape, x, y, 'test', true)) {
+              canFit = true; break;
+            }
+          }
+          if (canFit) break;
+        }
+        if (canFit) validShapes.push(shape);
+      });
+
+      if (validShapes.length === 0) return allShapes;
+      
+      let uniqueShapes = Array.from(new Set(validShapes.map(JSON.stringify))).map(JSON.parse);
+      return uniqueShapes;
+    }
+
+    function renderPieceSelection() {
+      const validOptions = getSmartValidPieces();
+
+      pieceSelection.forEach((canvasElem, index) => {
+        const ctxCanvas = canvasElem.getContext('2d');
+        ctxCanvas.clearRect(0, 0, canvasElem.width, canvasElem.height);
+        
+        const piece = validOptions[Math.floor(Math.random() * validOptions.length)];
+        canvasElem.piece = piece;
+        
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        pieceColors[index] = color;
+        
+        const maxCols = Math.max(...piece.map(r => r.length));
+        const maxRows = piece.length;
+        const adjSize = Math.min(canvasElem.width / (maxCols + 1), canvasElem.height / (maxRows + 1));
+        
+        const startX = (canvasElem.width - (maxCols * adjSize)) / 2;
+        const startY = (canvasElem.height - (maxRows * adjSize)) / 2;
+        
+        piece.forEach((row, rowIndex) => {
+          row.forEach((cell, colIndex) => {
+            if (cell) {
+              drawRoundedRect(ctxCanvas, startX + (colIndex * adjSize), startY + (rowIndex * adjSize), adjSize - 2, adjSize - 2, 4, color);
+            }
+          });
+        });
+      });
+    }
+
+    function placePiece(piece, x, y, color, isCheckOnly = false) {
+      for (let row = 0; row < piece.length; row++) {
+        for (let col = 0; col < piece[row].length; col++) {
+          if (piece[row][col]) {
+            if (x + col < 0 || x + col >= gridSize || y + row < 0 || y + row >= gridSize) return false;
+            if (grid[y + row][x + col]) return false;
+          }
+        }
+      }
+      
+      if (isCheckOnly) return true;
+
+      playSound('drop');
+      piece.forEach((row, rowIndex) => {
+        row.forEach((cell, colIndex) => {
+          if (cell) {
+            grid[y + rowIndex][x + colIndex] = color;
+            score += 1;
+          }
+        });
+      });
+      
+      checkClearLines(x, y);
+      return true;
+    }
+
+    function checkClearLines(lastX, lastY) {
+      let clearedRows = new Set();
+      let clearedCols = new Set();
+
+      for (let row = 0; row < gridSize; row++) {
+        if (grid[row].every(cell => cell !== null)) clearedRows.add(row);
+      }
+      for (let col = 0; col < gridSize; col++) {
+        let isFull = true;
+        for (let row = 0; row < gridSize; row++) {
+          if (grid[row][col] === null) isFull = false;
+        }
+        if (isFull) clearedCols.add(col);
+      }
+
+      let linesCleared = clearedCols.size + clearedRows.size;
+
+      if (linesCleared > 0) {
+        playSound('pop');
+        wrapper.classList.add('shake');
+        setTimeout(() => wrapper.classList.remove('shake'), 300);
+
+        combo += linesCleared;
+        let comboScore = 0;
+        for (let i = 0; i < linesCleared; i++) {
+          comboScore += 10 * (combo - linesCleared + 1 + i);
+        }
+        score += comboScore;
+        
+        showFloatingScore(lastX * blockSize, lastY * blockSize, `+${comboScore}`);
+
+        clearedRows.forEach(row => {
+          for (let col = 0; col < gridSize; col++) {
+            if(grid[row][col]) spawnParticles(col, row, grid[row][col]);
+            grid[row][col] = null;
+          }
+        });
+        clearedCols.forEach(col => {
+          for (let row = 0; row < gridSize; row++) {
+            if(grid[row][col]) spawnParticles(col, row, grid[row][col]);
+            grid[row][col] = null;
+          }
+        });
+
+        movesWithoutClear = 0;
+      } else if (combo > 0) {
+        movesWithoutClear++;
+        if (movesWithoutClear >= 3) combo = 0;
+      }
+
+      updateScoreDOM();
+      drawGrid();
+    }
+
+    function updateScoreDOM() {
+      document.getElementById('score').innerText = score;
+      document.getElementById('comboDisplay').innerText = combo;
+      if (score > highScore) {
+        highScore = score;
+        localStorage.setItem('modernBlockBlastBest', highScore);
+        document.getElementById('high-score').innerText = highScore;
+      }
+    }
+
+    function spawnParticles(c, r, colorHex) {
+      const x = c * blockSize + (blockSize / 2);
+      const y = r * blockSize + (blockSize / 2);
+      for (let i = 0; i < 6; i++) {
+        const p = document.createElement('div');
+        p.className = 'particle';
+        p.style.left = x + 'px';
+        p.style.top = y + 'px';
+        p.style.backgroundColor = colorHex;
+        p.style.width = p.style.height = (Math.random() * 6 + 4) + 'px';
+        
+        const a = Math.random() * Math.PI * 2;
+        const d = Math.random() * 50 + 30;
+        p.style.setProperty('--dx', Math.cos(a) * d + 'px');
+        p.style.setProperty('--dy', Math.sin(a) * d + 'px');
+        
+        particleContainer.appendChild(p);
+        setTimeout(() => p.remove(), 500);
+      }
+    }
+
+    function showFloatingScore(x, y, txt) {
+      const el = document.createElement('div');
+      el.className = 'floating-score';
+      el.style.left = (x + 30) + 'px';
+      el.style.top = (y + 30) + 'px';
+      el.innerText = txt;
+      particleContainer.appendChild(el);
+      setTimeout(() => el.remove(), 800);
+    }
+
+    function checkGameOver() {
+      let canPlaceAny = false;
+      for (const canvasElem of pieceSelection) {
+        const piece = canvasElem.piece;
+        if (piece) {
+          for (let row = 0; row < gridSize; row++) {
+            for (let col = 0; col < gridSize; col++) {
+              if (placePiece(piece, col, row, 'test', true)) {
+                canPlaceAny = true; break;
+              }
+            }
+            if (canPlaceAny) break;
+          }
+        }
+        if (canPlaceAny) break;
+      }
+
+      if (!canPlaceAny) {
+        // Efek mati
+        wrapper.classList.add('heavy-shake');
+        setTimeout(() => {
+            wrapper.classList.remove('heavy-shake');
+            showGameOverModal();
+        }, 300);
+      }
+    }
+
+    function showGameOverModal() {
+        playSound('scream'); // Panggil suara jumpscare
+        
+        const randomInsult = insults[Math.floor(Math.random() * insults.length)];
+        document.getElementById('modalScoreVal').innerText = score;
+        document.getElementById('modalInsultText').innerText = randomInsult;
+        
+        gameOverOverlay.classList.add('active');
+    }
+
+    btnRestart.addEventListener('click', () => {
+        gameOverOverlay.classList.remove('active');
+        resetGame();
+    });
+
+    function resetGame() {
+      score = 0; combo = 0; movesWithoutClear = 0;
+      updateScoreDOM();
+      resetGrid(); drawGrid(); renderPieceSelection();
+    }
+
+    // --- FITUR DRAG YANG SUDAH DIPERBAIKI ---
+    function getGridCoords(clientX, clientY, piece) {
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      
+      const rawX = (clientX - rect.left) * scaleX;
+      const rawY = (clientY - rect.top) * scaleY;
+      
+      let x = 0, y = 0;
+      
+      if (piece) {
+        const scale = 1.15;
+        const hoverX = rawX - (piece[0].length * blockSize * scale) / 2;
+        const hoverY = rawY - (piece.length * blockSize * scale) / 2 - 40; 
+        
+        const centerX = hoverX + (blockSize * scale) / 2;
+        const centerY = hoverY + (blockSize * scale) / 2;
+        
+        x = Math.floor(centerX / blockSize);
+        y = Math.floor(centerY / blockSize);
+      }
+      
+      return { x, y, rawX, rawY };
+    }
+
+    document.addEventListener('gesturestart', function (e) { e.preventDefault(); });
+
+    pieceSelection.forEach((canvasElem, index) => {
+      const startDrag = (e) => {
+        if (canvasElem.piece) {
+          audioCtx.resume(); 
+          playSound('pickup');
+          selectedPiece = canvasElem.piece;
+          piecePos = pieceColors[index];
+          currentPieceIndex = index;
+          isDragging = true;
+          canvasElem.style.opacity = '0.3'; 
+          canvasElem.style.transform = 'scale(0.9)';
+        }
+      };
+      canvasElem.addEventListener('mousedown', startDrag);
+      canvasElem.addEventListener('touchstart', (e) => { e.preventDefault(); startDrag(e); }, { passive: false });
+    });
+
+    const onMove = (e) => {
+      if (!isDragging || !selectedPiece) return;
+      if (e.type === 'touchmove') e.preventDefault();
+      
+      let clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      let clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+      drawGrid(); 
+      
+      const { x, y, rawX, rawY } = getGridCoords(clientX, clientY, selectedPiece);
+      
+      const isHoveringBoard = x > -selectedPiece[0].length && x < gridSize && y > -selectedPiece.length && y < gridSize;
+
+      if (isHoveringBoard) {
+        const canPlace = placePiece(selectedPiece, x, y, piecePos, true);
+        drawDraggingPiece(selectedPiece, x, y, canPlace ? piecePos : '#ff0000', true); 
+      }
+      drawDraggingPiece(selectedPiece, rawX, rawY, piecePos, false); 
+    };
+
+    const onEnd = (e) => {
+      if (!isDragging || !selectedPiece) return;
+      
+      let clientX = e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
+      let clientY = e.changedTouches ? e.changedTouches[0].clientY : e.clientY;
+
+      const elem = pieceSelection[currentPieceIndex];
+      elem.style.opacity = '1';
+      elem.style.transform = 'scale(1)';
+      
+      const { x, y } = getGridCoords(clientX, clientY, selectedPiece);
+      const isHoveringBoard = x > -selectedPiece[0].length && x < gridSize && y > -selectedPiece.length && y < gridSize;
+
+      if (isHoveringBoard) {
+        if (placePiece(selectedPiece, x, y, piecePos, false)) {
+          selectedPiece = null; isDragging = false;
+          elem.piece = null;
+          elem.getContext('2d').clearRect(0, 0, 150, 150);
+          
+          if (Array.from(pieceSelection).every((c) => !c.piece)) renderPieceSelection();
+          checkGameOver();
+        } else {
+          playSound('error');
+          drawGrid(); selectedPiece = null; isDragging = false;
+        }
+      } else {
+        drawGrid(); selectedPiece = null; isDragging = false;
+      }
+    };
+
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('touchmove', onMove, { passive: false });
+    window.addEventListener('mouseup', onEnd);
+    window.addEventListener('touchend', onEnd);
+    
+    resetGame();
+  </script>
+</body>
+</html>
+
