@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Block Blasts</title>
+  <style>
+    :root {
+      --bg: #0b0e14;
+      --panel: #1c2128;
+      --text: #adbac7;
+      --block-size: 50px;
+      --gap: 8px;
+      --rows: 6;
+      --cols: 6;
+      --red: #f85149;
+      --blue: #58a6ff;
+      --green: #3fb950;
+      --yellow: #d29922;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 40px 10px;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 100vh;
+      box-sizing: border-box;
+    }
+
+    .main-layout {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 25px;
+      background: #161b22;
+      padding: 25px;
+      border-radius: 20px;
+      border: 1px solid #30363d;
+      box-shadow: 0 25px 50px rgba(0, 0, 0, 0.6);
+    }
+
+    #game-container {
+      position: relative;
+      width: calc((var(--cols) * var(--block-size)) + ((var(--cols) + 1) * var(--gap)));
+      height: calc((var(--rows) * var(--block-size)) + ((var(--rows) + 1) * var(--gap)));
+      background: var(--bg);
+      border-radius: 12px;
+      box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.8);
+      overflow: hidden;
+      touch-action: none;
+    }
+
+    .block {
+      position: absolute;
+      width: var(--block-size);
+      height: var(--block-size);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s;
+      will-change: transform;
+      z-index: 2;
+    }
+
+    .red {
+      background: var(--red);
+      box-shadow: 0 4px 0 #991b1b;
+    }
+
+    .blue {
+      background: var(--blue);
+      box-shadow: 0 4px 0 #1e40af;
+    }
+
+    .green {
+      background: var(--green);
+      box-shadow: 0 4px 0 #166534;
+    }
+
+    .yellow {
+      background: var(--yellow);
+      box-shadow: 0 4px 0 #92400e;
+    }
+
+    .block.vanishing {
+      transform: scale(0) !important;
+      opacity: 0;
+    }
+
+    .particle {
+      position: absolute;
+      pointer-events: none;
+      z-index: 10;
+      animation: burst 0.6s ease-out forwards;
+    }
+
+    @keyframes burst {
+      to {
+        transform: translate(var(--dx), var(--dy)) scale(0);
+        opacity: 0;
+      }
+    }
+
+    .sidebar {
+      width: 170px;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    .stat-box {
+      background: var(--panel);
+      padding: 15px;
+      border-radius: 12px;
+      text-align: center;
+      border: 1px solid #30363d;
+    }
+
+    .label {
+      font-size: 0.7rem;
+      font-weight: bold;
+      color: #768390;
+      text-transform: uppercase;
+    }
+
+    #score,
+    #high-score {
+      font-size: 1.8rem;
+      font-weight: 800;
+      color: white;
+      margin-top: 5px;
+    }
+
+    #high-score {
+      color: #f2cc60;
+    }
+
+    /* Seed Input Styling */
+    .seed-container {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    #seed-input {
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 10px;
+      color: #58a6ff;
+      font-family: monospace;
+      font-size: 0.9rem;
+      outline: none;
+    }
+
+    #seed-input:focus {
+      border-color: var(--blue);
+    }
+
+    .control-btn {
+      background: #238636;
+      color: white;
+      border: none;
+      padding: 15px;
+      border-radius: 8px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .control-btn:hover {
+      background: #2ea043;
+    }
+
+    .shake {
+      animation: shake-key 0.2s;
+    }
+
+    @keyframes shake-key {
+
+      0%,
+      100% {
+        transform: translate(0, 0);
+      }
+
+      25% {
+        transform: translate(-4px, 0);
+      }
+
+      75% {
+        transform: translate(4px, 0);
+      }
+    }
+
+    .floating-score {
+      position: fixed;
+      pointer-events: none;
+      font-weight: 900;
+      color: #fff;
+      text-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+      animation: float-up 0.8s ease-out forwards;
+      z-index: 100;
+    }
+
+    @keyframes float-up {
+      0% {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+      }
+
+      100% {
+        transform: translateY(-60px) scale(1.5);
+        opacity: 0;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="main-layout">
+    <div id="game-container"></div>
+
+    <div class="sidebar">
+      <div class="stat-box">
+        <span class="label">Best</span>
+        <div id="high-score">0</div>
+      </div>
+      <div class="stat-box">
+        <span class="label">Score</span>
+        <div id="score">0</div>
+      </div>
+
+      <div class="seed-container">
+        <span class="label">World Seed</span>
+        <input type="text" id="seed-input" placeholder="Type to generate..." autocomplete="off">
+      </div>
+
+      <button class="control-btn" onclick="Game.init()">NEW GAME</button>
+    </div>
+  </div>
+
+  <script>
+    const audioCtx = new(window.AudioContext || window.webkitAudioContext)();
+    // Deterministic Random Engine
+    const SeedEngine = {
+      state: null,
+      // Simple hash to turn string into numeric seeds
+      cyrb128(str) {
+        let h1 = 1779033703,
+          h2 = 3144134277,
+          h3 = 1013904242,
+          h4 = 2773480762;
+        for (let i = 0, k; i < str.length; i++) {
+          k = str.charCodeAt(i);
+          h1 = h2 ^ Math.imul(h1 ^ k, 597399067);
+          h2 = h3 ^ Math.imul(h2 ^ k, 2869860233);
+          h3 = h4 ^ Math.imul(h3 ^ k, 951274213);
+          h4 = h1 ^ Math.imul(h4 ^ k, 2716044179);
+        }
+        h1 = Math.imul(h3 ^ (h1 >>> 18), 597399067);
+        h2 = Math.imul(h4 ^ (h2 >>> 22), 2869860233);
+        h3 = Math.imul(h1 ^ (h3 >>> 17), 951274213);
+        h4 = Math.imul(h2 ^ (h4 >>> 19), 2716044179);
+        return [h1 >>> 0, h2 >>> 0, h3 >>> 0, h4 >>> 0];
+      },
+      // SFC32 PRNG
+      sfc32(a, b, c, d) {
+        return function() {
+          a >>>= 0;
+          b >>>= 0;
+          c >>>= 0;
+          d >>>= 0;
+          var t = (a + b | 0) + d | 0;
+          d = d + 1 | 0;
+          a = b ^ b >>> 9;
+          b = c + (c << 3) | 0;
+          c = c << 21 | c >>> 11;
+          c = c + t | 0;
+          return (t >>> 0) / 4294967296;
+        }
+      },
+      setSeed(val) {
+        const seedParts = this.cyrb128(val || Math.random().toString());
+        this.state = this.sfc32(...seedParts);
+      },
+      random() {
+        return this.state ? this.state() : Math.random();
+      }
+    };
+    const Config = {
+      ROWS: 6,
+      COLS: 6,
+      COLORS: ['red', 'blue', 'green', 'yellow'],
+      HEX: {
+        red: '#f85149',
+        blue: '#58a6ff',
+        green: '#3fb950',
+        yellow: '#d29922'
+      },
+      BLOCK_SIZE: 50,
+      GAP: 8
+    };
+    const Game = {
+      grid: [],
+      domGrid: [],
+      score: 0,
+      highScore: localStorage.getItem('blockBlastBest') || 0,
+      isAnimating: false,
+      container: document.getElementById('game-container'),
+      seedInput: document.getElementById('seed-input'),
+      init() {
+        // Re-initialize random engine with current seed input
+        SeedEngine.setSeed(this.seedInput.value);
+        this.score = 0;
+        this.updateScoreDisplay();
+        this.container.innerHTML = '';
+        this.isAnimating = false;
+        this.grid = Array(Config.ROWS).fill().map(() => Array(Config.COLS).fill(null));
+        this.domGrid = Array(Config.ROWS).fill().map(() => Array(Config.COLS).fill(null));
+        for (let r = 0; r < Config.ROWS; r++) {
+          for (let c = 0; c < Config.COLS; c++) {
+            this.createBlock(r, c, true);
+          }
+        }
+      },
+      playSynth(type) {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        const now = audioCtx.currentTime;
+        if (type === 'pop') {
+          osc.frequency.setValueAtTime(600, now);
+          osc.frequency.exponentialRampToValueAtTime(100, now + 0.1);
+          gain.gain.setValueAtTime(0.4, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+          osc.start(now);
+          osc.stop(now + 0.1);
+        } else if (type === 'drop') {
+          osc.frequency.setValueAtTime(150, now);
+          osc.frequency.exponentialRampToValueAtTime(40, now + 0.2);
+          gain.gain.setValueAtTime(0.2, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+          osc.start(now);
+          osc.stop(now + 0.2);
+        }
+      },
+      createBlock(r, c, isInit = false) {
+        // Use SeedEngine instead of Math.random
+        const color = Config.COLORS[Math.floor(SeedEngine.random() * Config.COLORS.length)];
+        const el = document.createElement('div');
+        el.className = `block ${color}`;
+        this.grid[r][c] = color;
+        this.domGrid[r][c] = el;
+        const x = c * (Config.BLOCK_SIZE + Config.GAP) + Config.GAP;
+        const y = isInit ? (r * (Config.BLOCK_SIZE + Config.GAP) + Config.GAP) : -100;
+        el.style.transform = `translate(${x}px, ${y}px)`;
+        el.onclick = (e) => this.handleClick(e, r, c);
+        this.container.appendChild(el);
+        if (!isInit) {
+          requestAnimationFrame(() => {
+            const targetY = r * (Config.BLOCK_SIZE + Config.GAP) + Config.GAP;
+            el.style.transform = `translate(${x}px, ${targetY}px)`;
+          });
+        }
+      },
+      async handleClick(e, r, c) {
+        if (this.isAnimating) return;
+        const color = this.grid[r][c];
+        const matches = this.findMatches(r, c, color);
+        if (matches.size >= 2) {
+          this.isAnimating = true;
+          this.playSynth('pop');
+          const points = matches.size * 10;
+          this.score += points;
+          this.updateScoreDisplay();
+          this.showFloatingText(e.clientX, e.clientY, `+${points}`);
+          matches.forEach(key => {
+            const [mr, mc] = key.split(',').map(Number);
+            this.spawnParticles(mc, mr, color);
+            this.domGrid[mr][mc].classList.add('vanishing');
+            this.grid[mr][mc] = null;
+          });
+          this.container.classList.add('shake');
+          setTimeout(() => this.container.classList.remove('shake'), 200);
+          setTimeout(() => this.cleanupAndDrop(), 250);
+        }
+      },
+      findMatches(r, c, color, set = new Set()) {
+        const key = `${r},${c}`;
+        if (r < 0 || r >= Config.ROWS || c < 0 || c >= Config.COLS || this.grid[r][c] !== color || set.has(key)) return set;
+        set.add(key);
+        this.findMatches(r + 1, c, color, set);
+        this.findMatches(r - 1, c, color, set);
+        this.findMatches(r, c + 1, color, set);
+        this.findMatches(r, c - 1, color, set);
+        return set;
+      },
+      cleanupAndDrop() {
+        document.querySelectorAll('.vanishing').forEach(el => el.remove());
+        for (let c = 0; c < Config.COLS; c++) {
+          let holes = 0;
+          for (let r = Config.ROWS - 1; r >= 0; r--) {
+            if (this.grid[r][c] === null) {
+              holes++;
+            } else if (holes > 0) {
+              const block = this.domGrid[r][c];
+              const newR = r + holes;
+              this.grid[newR][c] = this.grid[r][c];
+              this.domGrid[newR][c] = block;
+              this.grid[r][c] = null;
+              this.domGrid[r][c] = null;
+              const x = c * (Config.BLOCK_SIZE + Config.GAP) + Config.GAP;
+              const y = newR * (Config.BLOCK_SIZE + Config.GAP) + Config.GAP;
+              block.style.transform = `translate(${x}px, ${y}px)`;
+              block.onclick = (e) => this.handleClick(e, newR, c);
+            }
+          }
+          for (let i = 0; i < holes; i++) {
+            this.createBlock(i, c);
+          }
+        }
+        setTimeout(() => {
+          this.playSynth('drop');
+          this.isAnimating = false;
+        }, 300);
+      },
+      updateScoreDisplay() {
+        document.getElementById('score').innerText = this.score;
+        if (this.score > this.highScore) {
+          this.highScore = this.score;
+          localStorage.setItem('blockBlastBest', this.highScore);
+        }
+        document.getElementById('high-score').innerText = this.highScore;
+      },
+      spawnParticles(c, r, colorName) {
+        const x = c * (Config.BLOCK_SIZE + Config.GAP) + (Config.BLOCK_SIZE / 2) + Config.GAP;
+        const y = r * (Config.BLOCK_SIZE + Config.GAP) + (Config.BLOCK_SIZE / 2) + Config.GAP;
+        for (let i = 0; i < 8; i++) {
+          const p = document.createElement('div');
+          p.className = 'particle';
+          p.style.left = x + 'px';
+          p.style.top = y + 'px';
+          p.style.backgroundColor = Config.HEX[colorName];
+          p.style.width = p.style.height = (Math.random() * 8 + 4) + 'px';
+          const a = Math.random() * Math.PI * 2;
+          const d = Math.random() * 60 + 40;
+          p.style.setProperty('--dx', Math.cos(a) * d + 'px');
+          p.style.setProperty('--dy', Math.sin(a) * d + 'px');
+          this.container.appendChild(p);
+          setTimeout(() => p.remove(), 600);
+        }
+      },
+      showFloatingText(x, y, txt) {
+        const el = document.createElement('div');
+        el.className = 'floating-score';
+        el.style.left = x + 'px';
+        el.style.top = y + 'px';
+        el.innerText = txt;
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), 800);
+      }
+    };
+    Game.seedInput.addEventListener('input', () => {
+      Game.init();
+    });
+    // Start initial game
+    Game.init();
+  </script>
+
+</body>
+
+</html>
