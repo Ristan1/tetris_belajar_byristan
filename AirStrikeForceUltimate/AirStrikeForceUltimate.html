@@ -125,17 +125,21 @@
 
     <script>
         // ====================================================================
-// RUANG ASET (TEMPEL LINK RAW GITHUB KAMU DI DALAM TANDA KUTIP "")
-// ====================================================================
-const ASSETS = {
-    bg1: "https://raw.githubusercontent.com/Ristan1/tetris_belajar_byristan/refs/heads/main/AirStrikeForceUltimate/1780447764943.png", 
-    // ... (gambar lainnya tetap sama)
-    boss5: "",
-    shoot: "", laser: "", explode: "", heavy_explode: "", item: "", 
-    
-    // 👇 TEMPEL LINK MUSIK INSTRUMEN KAMU DI SINI 👇
-    bgm: "https://raw.githubusercontent.com/Ristan1/tetris_belajar_byristan/refs/heads/main/AirStrikeForceUltimate/musik_instrumen_kamu.mp3"         
-};
+        // RUANG ASET DIKEMBALIKAN UTUH SEPERTI SEMULA
+        // ====================================================================
+        const ASSETS = {
+            bg1: "https://raw.githubusercontent.com/Ristan1/tetris_belajar_byristan/refs/heads/main/AirStrikeForceUltimate/1780447764943.png", 
+            bg2: "https://raw.githubusercontent.com/Ristan1/tetris_belajar_byristan/refs/heads/main/AirStrikeForceUltimate/1780447673477.png", 
+            bg3: "https://raw.githubusercontent.com/Ristan1/tetris_belajar_byristan/refs/heads/main/AirStrikeForceUltimate/f4c66e343c52785c5580a6ce4f0bd82d.jpg", 
+            bg4: "https://raw.githubusercontent.com/Ristan1/tetris_belajar_byristan/refs/heads/main/AirStrikeForceUltimate/20260603_120552.png", 
+            bg5: "",
+            player: "", enemy: "", 
+            boss1: "", boss2: "", boss3: "", boss4: "", boss5: "",
+            shoot: "", laser: "", explode: "", heavy_explode: "", item: "", 
+            // Silakan tempel link musik BGM kamu di sini jika ada
+            bgm: ""         
+        };
+
         const canvas = document.getElementById("gameCanvas");
         const ctx = canvas.getContext("2d");
         const container = document.getElementById("gameContainer");
@@ -218,7 +222,7 @@ const ASSETS = {
                 osc.frequency.linearRampToValueAtTime(1000, now + 0.2);
                 gain.gain.setValueAtTime(0.1, now); gain.gain.linearRampToValueAtTime(0, now + 0.2);
                 osc.start(now); osc.stop(now + 0.2);
-            } else if (type === 'thrust') { // Suara mesin pendorong saat cutscene
+            } else if (type === 'thrust') { 
                 osc.type = 'sawtooth'; osc.frequency.setValueAtTime(150, now);
                 osc.frequency.linearRampToValueAtTime(50, now + 1.5);
                 gain.gain.setValueAtTime(0.1, now); gain.gain.linearRampToValueAtTime(0, now + 1.5);
@@ -264,7 +268,7 @@ const ASSETS = {
             player.y = canvas.height + 120; 
             targetX = canvas.width / 2;
             targetY = canvas.height - 100; 
-            playSound('thrust'); // Mainkan suara dorongan
+            playSound('thrust');
             if (bgmAudio) {
                 bgmAudio.currentTime = 0; 
                 bgmAudio.play().catch(e=>console.log(e));
@@ -327,7 +331,6 @@ const ASSETS = {
             
             enemies = []; enemyBullets = []; items = [];
             
-            // Efek suara dorongan roket keluar layar
             playSound('thrust');
 
             setTimeout(() => {
@@ -458,9 +461,7 @@ const ASSETS = {
             if (isPlaying) {
                 frameCount++;
 
-                // PERBAIKAN LOGIKA RENDER CUTSCENE
                 if (isTransitioning) {
-                    // Animasi pesawat ngebut keluar layar (Level Clear)
                     player.y -= 7; 
                     drawJet(player.x, player.y, false);
                     
@@ -473,7 +474,6 @@ const ASSETS = {
                     }
                 } 
                 else if (isLevelStarting) {
-                    // Animasi pesawat masuk layar
                     player.y -= 4; 
                     drawJet(player.x, player.y, false);
                     
@@ -491,7 +491,6 @@ const ASSETS = {
                     }
                 } 
                 else {
-                    // --- LOGIKA GAME NORMAL ---
                     if (powerUpTimer > 0) {
                         powerUpTimer--;
                         document.getElementById("powerupBar").style.width = (powerUpTimer / MAX_POWERUP_TIME * 100) + "%";
@@ -782,9 +781,8 @@ const ASSETS = {
                         }
                         if (item.y > canvas.height + 30) items.splice(i, 1);
                     }
-                } // Penutup Game Normal
+                } 
 
-                // RENDER PARTIKEL (Sekarang dipindah ke luar agar tetap jalan saat transisi/cutscene)
                 for (let i = blasts.length - 1; i >= 0; i--) { blasts[i].draw(); if (blasts[i].done()) blasts.splice(i, 1); }
                 for (let i = particles.length - 1; i >= 0; i--) {
                     let p = particles[i]; p.x += p.dx; p.y += p.dy; p.life -= 0.04;
