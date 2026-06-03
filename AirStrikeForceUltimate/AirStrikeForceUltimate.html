@@ -37,7 +37,6 @@
         #powerupBar { width: 100%; height: 100%; background: #ffff00; transition: width 0.1s linear;}
         
         #bossUI {
-            /* Perbaikan posisi agar tidak tumpang tindih dengan boss */
             position: absolute; top: 50px; left: 50%; transform: translateX(-50%);
             width: 80%; display: none; flex-direction: column; align-items: center;
             z-index: 10; font-weight: bold; color: #ff3300; text-shadow: 0 0 5px #000;
@@ -64,7 +63,6 @@
         #levelTransition h2 { margin: 0; color: #0ff; font-size: 32px; }
         #levelTransition p { margin: 5px 0 0 0; color: #fff; font-size: 16px; }
 
-        /* ANIMASI WARNING BOSS */
         #warningUI {
             position: absolute; top: 35%; left: 50%; transform: translate(-50%, -50%);
             text-align: center; width: 100%; z-index: 25; display: none;
@@ -126,9 +124,6 @@
     </div>
 
     <script>
-        // ====================================================================
-        // RUANG ASET (TEMPEL LINK RAW GITHUB KAMU DI DALAM TANDA KUTIP "")
-        // ====================================================================
         const ASSETS = {
             bg1: "https://raw.githubusercontent.com/Ristan1/tetris_belajar_byristan/refs/heads/main/AirStrikeForceUltimate/1780447764943.png", bg2: "https://raw.githubusercontent.com/Ristan1/tetris_belajar_byristan/refs/heads/main/AirStrikeForceUltimate/1780447673477.png", bg3: "https://raw.githubusercontent.com/Ristan1/tetris_belajar_byristan/refs/heads/main/AirStrikeForceUltimate/f4c66e343c52785c5580a6ce4f0bd82d.jpg", bg4: "https://raw.githubusercontent.com/Ristan1/tetris_belajar_byristan/refs/heads/main/AirStrikeForceUltimate/20260603_120552.png", bg5: "",
             player: "", enemy: "", 
@@ -147,10 +142,8 @@
         window.addEventListener('resize', resize);
         resize();
 
-        // --- SISTEM APPSCRIPT SKOR DARI BLOCK BLAST ---
         function kirimSkorKePortal(skorAkhir, versiGame) {
             const urlParams = new URLSearchParams(window.location.search);
-            // Default nama 'Pilot' jika nama tidak ada di URL
             const playerName = urlParams.get('nama') || 'Pilot'; 
             
             const waktuSekarang = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WITA';
@@ -162,7 +155,6 @@
                 .catch(err => console.error("Gagal kirim skor", err));
         }
 
-        // --- SISTEM PEMUAT GAMBAR ---
         let images = {};
         function loadImage(name, url) {
             if (!url) return;
@@ -176,7 +168,6 @@
         loadImage('boss1', ASSETS.boss1); loadImage('boss2', ASSETS.boss2);
         loadImage('boss3', ASSETS.boss3); loadImage('boss4', ASSETS.boss4); loadImage('boss5', ASSETS.boss5);
 
-        // --- SISTEM PEMUAT SUARA ---
         let audioFiles = {};
         let bgmAudio = null;
         let audioCtx; 
@@ -222,12 +213,16 @@
                 osc.frequency.linearRampToValueAtTime(1000, now + 0.2);
                 gain.gain.setValueAtTime(0.1, now); gain.gain.linearRampToValueAtTime(0, now + 0.2);
                 osc.start(now); osc.stop(now + 0.2);
+            } else if (type === 'thrust') { // Suara mesin pendorong saat cutscene
+                osc.type = 'sawtooth'; osc.frequency.setValueAtTime(150, now);
+                osc.frequency.linearRampToValueAtTime(50, now + 1.5);
+                gain.gain.setValueAtTime(0.1, now); gain.gain.linearRampToValueAtTime(0, now + 1.5);
+                osc.start(now); osc.stop(now + 1.5);
             }
         }
 
-        // --- VARIABEL UTAMA ---
         let isPlaying = false;
-        let isLevelStarting = false; // Flag animasi pesawat datang
+        let isLevelStarting = false; 
         let score = 0;
         let frameCount = 0;
         let bgOffset = 0;
@@ -250,7 +245,6 @@
         let targetX = player.x; let targetY = player.y;
 
         function handleInput(x, y) {
-            // Blokir kontrol pemain jika animasi intro berjalan atau transisi
             if (!isPlaying || isTransitioning || isLevelStarting) return; 
             let rect = canvas.getBoundingClientRect();
             targetX = (x - rect.left) * (canvas.width / rect.width);
@@ -262,9 +256,10 @@
         function startLevelIntro() {
             isLevelStarting = true;
             player.x = canvas.width / 2;
-            player.y = canvas.height + 120; // Pesawat mulai dari luar layar (bawah)
+            player.y = canvas.height + 120; 
             targetX = canvas.width / 2;
-            targetY = canvas.height - 100; // Titik henti standar
+            targetY = canvas.height - 100; 
+            playSound('thrust'); // Mainkan suara dorongan
             if (bgmAudio) {
                 bgmAudio.currentTime = 0; 
                 bgmAudio.play().catch(e=>console.log(e));
@@ -286,7 +281,6 @@
             document.getElementById("levelTransition").style.display = "none";
             updateUI();
             
-            // Panggil intro
             startLevelIntro();
         });
 
@@ -316,7 +310,6 @@
             document.getElementById("bossUI").style.display = "none";
             document.getElementById("warningUI").style.display = "none";
 
-            // Trigger integrasi appscript
             kirimSkorKePortal(score, "AirStrike");
         }
 
@@ -329,13 +322,10 @@
             
             enemies = []; enemyBullets = []; items = [];
             
-            // Pesawat tetap terbang lurus keluar layar atas saat transisi
-            let exitInterval = setInterval(() => {
-                player.y -= 5;
-            }, 1000/60);
+            // Efek suara dorongan roket keluar layar
+            playSound('thrust');
 
             setTimeout(() => {
-                clearInterval(exitInterval);
                 currentLevel++;
                 player.wingman = false; wingmanTimer = 0; 
                 scoreToNextBoss = score + 1000; 
@@ -343,11 +333,10 @@
                 isTransitioning = false; bossDefeated = false;
                 
                 updateUI();
-                startLevelIntro(); // Mainkan lagi animasi datang
+                startLevelIntro(); 
             }, 3500);
         }
 
-        // --- MENGGAMBAR ---
         function drawBattlefield() {
             let currentBg = images['bg' + currentLevel];
             if (currentBg && currentBg.complete && currentBg.naturalHeight !== 0) {
@@ -458,19 +447,31 @@
             };
         }
 
-        // --- LOOP UTAMA ---
         function loop() {
             drawBattlefield();
 
-            if (isPlaying && !isTransitioning) {
+            if (isPlaying) {
                 frameCount++;
 
-                if (isLevelStarting) {
-                    // --- SCENE INTRO PESAWAT TERBANG ---
-                    player.y -= 4; // Laju kapal naik
+                // PERBAIKAN LOGIKA RENDER CUTSCENE
+                if (isTransitioning) {
+                    // Animasi pesawat ngebut keluar layar (Level Clear)
+                    player.y -= 7; 
                     drawJet(player.x, player.y, false);
                     
-                    // Efek thruster nitro dari bawah
+                    if (frameCount % 2 === 0) {
+                        particles.push({
+                            x: player.x + (Math.random()-0.5)*10, y: player.y + 25, 
+                            dx: (Math.random()-0.5)*2, dy: 8 + Math.random()*3, 
+                            life: 1.0, color: Math.random() > 0.5 ? "#00ffff" : "#ffffff"
+                        });
+                    }
+                } 
+                else if (isLevelStarting) {
+                    // Animasi pesawat masuk layar
+                    player.y -= 4; 
+                    drawJet(player.x, player.y, false);
+                    
                     if (frameCount % 2 === 0) {
                         particles.push({
                             x: player.x + (Math.random()-0.5)*10, y: player.y + 25, 
@@ -481,9 +482,10 @@
 
                     if (player.y <= targetY) {
                         player.y = targetY;
-                        isLevelStarting = false; // Intro selesai, masuk ke game normal
+                        isLevelStarting = false; 
                     }
-                } else {
+                } 
+                else {
                     // --- LOGIKA GAME NORMAL ---
                     if (powerUpTimer > 0) {
                         powerUpTimer--;
@@ -502,7 +504,6 @@
                     
                     drawJet(player.x, player.y, false);
                     
-                    // Efek thruster biasa
                     if (frameCount % 5 === 0) {
                         ctx.fillStyle = "#ffaa00"; ctx.beginPath();
                         ctx.moveTo(player.x-5, player.y+20); ctx.lineTo(player.x, player.y+35+Math.random()*10); ctx.lineTo(player.x+5, player.y+20); ctx.fill();
@@ -595,7 +596,6 @@
                             
                             bossActive = true;
                             let bHp = 1000 + (currentLevel * 500); 
-                            // Perbaikan Overlap: Target Y diturunkan ke 180 agar terhindar dari bar
                             boss = { x: canvas.width/2, y: -150, targetY: 180, hp: bHp, maxHp: bHp, speed: 0.6 + (currentLevel*0.1), dir: 1, state: 'ENTERING', type: currentLevel };
                             document.getElementById("bossName").innerText = "BOSS LEVEL " + currentLevel;
                             document.getElementById("bossUI").style.display = "flex";
@@ -665,7 +665,6 @@
                                 }
                             }
                             
-                            // BOSS DROP MENGGUNAKAN LIMIT
                             if (frameCount % 200 === 0) {
                                 handleItemDrop(boss.x, boss.y + 20, true);
                             }
@@ -778,9 +777,9 @@
                         }
                         if (item.y > canvas.height + 30) items.splice(i, 1);
                     }
-                } // Akhir dari Game Normal
+                } // Penutup Game Normal
 
-                // Render Partikel / Blast global (baik saat intro atau main biasa)
+                // RENDER PARTIKEL (Sekarang dipindah ke luar agar tetap jalan saat transisi/cutscene)
                 for (let i = blasts.length - 1; i >= 0; i--) { blasts[i].draw(); if (blasts[i].done()) blasts.splice(i, 1); }
                 for (let i = particles.length - 1; i >= 0; i--) {
                     let p = particles[i]; p.x += p.dx; p.y += p.dy; p.life -= 0.04;
